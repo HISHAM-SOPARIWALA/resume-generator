@@ -86,6 +86,9 @@ def index():
     session['question_index'] = 0
     session['answers'] = []
     session['chat_history'] = []
+    session['count'] =0
+    session['info']=[]
+
     
     # Add system prompt to chat history
     session['chat_history'].append({"role": "system", "content": SYSTEM_PROMPT})
@@ -98,7 +101,6 @@ def index():
 def get_data():
     data = request.json
     user_message = data.get('message', '')
-    count = 0
     # Get the current state from session
     question_index = session.get('question_index', 0)
     answers = session.get('answers', [])
@@ -124,9 +126,10 @@ def get_data():
             # Transition message to LLM
             response = f"Thanks for sharing, {name}! I'll help you build a professional resume. Let's start by discussing your educational background. Could you tell me about your education?"
     else:
-        if count>4:
+        session['count']+=1
+        if session['count']>=3:
             try:
-                count+=1
+                print(session['count'])
                 # Call Groq API with the full chat history
                 completion = client.chat.completions.create(
                     model="llama3-70b-8192",
@@ -135,21 +138,18 @@ def get_data():
                 
                 # Get response from Groq
                 response = completion.choices[0].message.content
+                chat_history.append({"role": "system", "content": response})
             except Exception as e:
                 print(f"Error calling Groq API: {str(e)}")
                 response = f"I'm sorry, I encountered an error while processing your request. Please try again."
-        
+                session['count']+=1
+        # else:
+        #     completion = client.chat.completions.create(
+        #             model="llama3-70b-8192",
+        #             messages=f'based on the below text analyze it and convert in to a resume with the following format name: email: projects , introduction: and experience {chat_history}'
+        #         )
+        #     response = completion.choices[0].message.content
         # Add the bot response to chat history
-            chat_history.append({"role": "assistant", "content": response})
-        else:
-            completion = client.chat.completions.create(
-                    model="llama3-70b-8192",
-                    messages=f"{chat_history}\n based on the above details give me a dictionary with the following name: email: projects: softskills: hardskills: education: experience:"
-                )
-            response = completion.choices[0].message.content
-            print(response)
-            
-    
     # Update session
     session['question_index'] = question_index
     session['answers'] = answers
