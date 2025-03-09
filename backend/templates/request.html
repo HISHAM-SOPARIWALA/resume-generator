@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item Manager</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Item Manager</h2>
+        <button id="load-items">Load Items</button>
+        <div id="items-container"></div>
+
+        <h3>Add New Item</h3>
+        <input type="text" id="item-name" placeholder="Item Name">
+        <input type="text" id="item-description" placeholder="Item Description">
+        <button id="add-item">Add Item</button>
+    </div>
+
+    <script>
+        class DataManager {
+            constructor() {
+                this.isLoading = false;
+                this.cache = {};
+            }
+            
+            loadData(endpoint, useCache = true) {
+                return new Promise((resolve, reject) => {
+                    if (useCache && this.cache[endpoint]) {
+                        console.log('Using cached data for:', endpoint);
+                        resolve(this.cache[endpoint]);
+                        return;
+                    }
+                    
+                    this.isLoading = true;
+                    
+                    $.ajax({
+                        url: endpoint,
+                        type: 'GET',
+                        dataType: 'json',
+                        success: (data) => {
+                            this.isLoading = false;
+                            if (useCache) {
+                                this.cache[endpoint] = data;
+                            }
+                            resolve(data);
+                        },
+                        error: (xhr, status, error) => {
+                            this.isLoading = false;
+                            console.error('Error fetching data:', error);
+                            reject(error);
+                        }
+                    });
+                });
+            }
+
+            clearCache(endpoint = null) {
+                if (endpoint) {
+                    delete this.cache[endpoint];
+                } else {
+                    this.cache = {};
+                }
+            }
+
+            postData(endpoint, data) {
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: endpoint,
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(data),
+                        dataType: 'json',
+                        success: (response) => {
+                            this.clearCache();
+                            resolve(response);
+                        },
+                        error: (xhr, status, error) => {
+                            console.error('Error posting data:', error);
+                            reject(error);
+                        }
+                    });
+                });
+            }
+
+            renderItems(items, containerId) {
+                const container = $(`#${containerId}`);
+                container.empty();
+
+                if (!items || items.length === 0) {
+                    container.html('<p>No items available.</p>');
+                    return;
+                }
+
+                items.forEach(item => {
+                    const itemElement = $('<div class="item"></div>');
+                    itemElement.html(`
+                        <h3>${item.name}</h3>
+                        <p>${item.description}</p>
+                        <button class="item-action" data-id="${item.id}">View Details</button>
+                    `);
+                    container.append(itemElement);
+                });
+
+                $('.item-action').click(function() {
+                    const itemId = $(this).data('id');
+                    alert('Action clicked for item: ' + itemId);
+                });
+            }
+        }
+
+        $(document).ready(function() {
+            const dataManager = new DataManager();
+
+            $("#load-items").click(function() {
+                dataManager.loadData('/items')
+                    .then(data => dataManager.renderItems(data, 'items-container'))
+                    .catch(error => console.error('Error:', error));
+            });
+
+            $("#add-item").click(function() {
+                const name = $("#item-name").val().trim();
+                const description = $("#item-description").val().trim();
+
+                if (name === "" || description === "") {
+                    alert("Please enter both name and description.");
+                    return;
+                }
+
+                dataManager.postData('/items', { name, description })
+                    .then(response => {
+                        alert(response.message);
+                        $("#load-items").click(); // Reload items after adding
+                    })
+                    .catch(error => console.error('Error:', error));
+            });
+        });
+    </script>
+
+</body>
+</html>

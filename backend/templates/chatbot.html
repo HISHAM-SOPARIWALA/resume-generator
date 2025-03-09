@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <style>
+        #chat-container {
+            width: 350px;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            max-width: 70%;
+        }
+        .user-message {
+            background-color: #e2f5fe;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #f0f0f0;
+            align-self: flex-start;
+        }
+        #chat-input-container {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        #chat-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-right: 10px;
+        }
+        #send-btn {
+            padding: 8px 15px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-messages"></div>
+        <div id="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button id="send-btn chat-send" class="item-action">Send</button>
+        </div>
+    </div>
+<!-- <script src="app.js"></script> -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+   
+    <script>
+   $(document).ready(function() {
+    const chatMessages = $('#chat-messages');
+    const chatInput = $('#chat-input');
+    const sendBtn = $('#send-btn');
+
+    // Function to append messages
+    function appendMessage(message, sender) {
+        const messageElement = $('<div>').addClass('message').addClass(sender === 'user' ? 'user-message' : 'bot-message');
+        messageElement.html(message.replace(/\n/g, '<br>'));
+        chatMessages.append(messageElement);
+        chatMessages.scrollTop(chatMessages[0].scrollHeight);
+    }
+
+    // Fetch the first question from Flask when page loads
+    $.ajax({
+        url: '/get-data',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ message: '' }),  // Empty message to trigger first question
+        dataType: 'json',
+        success: function(response) {
+            appendMessage(response.message, 'bot');
+        }
+    });
+
+    // Send message function
+    function sendMessage() {
+        const message = chatInput.val().trim();
+        if (message === '') return;
+
+        appendMessage(message, 'user');
+        chatInput.val('').css('height', 'auto');
+        chatInput.prop('disabled', true);
+        sendBtn.prop('disabled', true);
+        console.log(message);
+        $.ajax({
+            url: '/get-data',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ message }),
+            dataType: 'json',
+            success: function(response) {
+                appendMessage(response.message, 'bot');
+                chatInput.prop('disabled', false);
+                sendBtn.prop('disabled', false);
+                chatInput.focus();
+            }
+        });
+    }
+
+    // Handle send button click
+    sendBtn.on('click', sendMessage);
+
+    // Handle enter key
+    chatInput.on('keydown', function(e) {
+        if (e.keyCode === 13 && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+});
+
+    </script>
+</body>
+</html>
+ <!-- <script>
+        $(document).ready(function() {
+            // Initialize conversation history
+            const conversationData = {
+                messages: [],
+                timestamp: new Date(),
+                userId: 'user-' + Math.random().toString(36).substr(2, 9)
+            };
+
+            // Add initial bot message
+            addBotMessage("Hi there! How can I help you today?");
+
+            // Handle send button click
+            $("#send-btn").on("click", sendMessage);
+
+            // Handle press Enter to send
+            $("#chat-input").on("keypress", function(e) {
+                if (e.which === 13) {
+                    sendMessage();
+                }
+            });
+w
+            function sendMessage() {
+                const userInput = $("#chat-input").val().trim();
+                if (userInput === "") return;
+
+                // Add user message to chat
+                addUserMessage(userInput);
+                
+                // Store in conversation data
+                conversationData.messages.push({
+                    role: 'user',
+                    content: userInput,
+                    timestamp: new Date()
+                });
+
+                // Clear input
+                $("#chat-input").val("");
+
+                // Simulate bot response (replace with actual backend call)
+                setTimeout(() => {
+                    const botResponse = `I received your message: "${userInput}"`;
+                    
+                    // Add bot response to chat
+                    addBotMessage(botResponse);
+                    
+                    // Store in conversation data
+                    conversationData.messages.push({
+                        role: 'bot',
+                        content: botResponse,
+                        timestamp: new Date()
+                    });
+
+                    // Send data to React component
+                    sendDataToReact(conversationData);
+                }, 500);
+            }
+
+            function addUserMessage(message) {
+                $("#chat-messages").append(`<div class="message user-message">${message}</div>`);
+                scrollToBottom();
+            }
+
+            function addBotMessage(message) {
+                $("#chat-messages").append(`<div class="message bot-message">${message}</div>`);
+                scrollToBottom();
+            }
+
+            function scrollToBottom() {
+                const chatMessages = document.getElementById("chat-messages");
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            function sendDataToReact(data) {
+                // Create a custom event to communicate with React
+                const event = new CustomEvent('chatbotData', { detail: data });
+                window.dispatchEvent(event);
+                
+                // If React is running in a different context (e.g., parent frame)
+                // you might need to use postMessage instead:
+                /*
+                window.parent.postMessage({
+                    type: 'CHATBOT_DATA',
+                    payload: data
+                }, '*');
+                */
+                
+                console.log("Data sent to React:", data);
+            }
+        });
+        
+    </script> -->
