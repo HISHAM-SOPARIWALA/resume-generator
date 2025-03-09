@@ -98,7 +98,7 @@ def get_data():
     question_index = session.get('question_index', 0)
     answers = session.get('answers', [])
     chat_history = session.get('chat_history', [])
-    chat_history = [1:]
+    chat_history = chat_history[1:]
     
     # Add the user message to chat history
     chat_history.append({"role": "user", "content": user_message})
@@ -118,16 +118,21 @@ def get_data():
             name = answers[0]
             topic = answers[1]
             knowledge_level = answers[2]
-            
+            response_json = json.dumps(chat_history)
             response = f"Thanks for sharing, {name}! I'd be happy to discuss {topic} with you. " \
                       f"Based on your {knowledge_level} knowledge level, what specific questions do you have about {topic}?"
     else:
 
-        response = client.chat.completions.create(
-        model="llama3-80b",
-        messages=[{"role": "system", "content": "You are a professional resume writer."},
-                  {"role": "user", "content": prompt}]
-    )
+        completion = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {
+                    "role": "user",
+                    "content": "f{prompt} below attached the users details {response_json}"
+                }
+            ]
+        )
+        print(completion.choices[0].message.content)
 
     #     # After predefined questions, handle with your LLM
     #     # This is where you would call your actual LLM API
